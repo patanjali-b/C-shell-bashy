@@ -1,8 +1,7 @@
 #include "headers.h"
 
-void prompt(char *home)
+void newprompt(char *home)
 {
-
     char username[1024];
     char systemname[1024];
     getlogin_r(username, 1024);
@@ -27,6 +26,8 @@ void prompt(char *home)
         strcpy(cwd, temp);
     }
 
-   
-    printf("%s<%s@%s:%s%s> %s\n", GREEN, username, systemname, BLUE, cwd, WHITE);
+    char *last_event = history[counter_pastevents-1];
+    char *token = strtok(last_event, " \n\t\r");
+    
+    printf("%s<%s@%s:%s%s %s : %ds>%s\n", GREEN, username, systemname, BLUE, cwd, token,execution_time_seconds,  WHITE);
 }
