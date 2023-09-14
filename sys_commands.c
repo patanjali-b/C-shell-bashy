@@ -1,91 +1,90 @@
 #include "headers.h"
+#include "sys_commands.h"
 
 execution_time_seconds = 0;
 return_for_execvp = 100;
+counter_bg_processes = 0;
 
-void syscommands(char *input, char *home)
+void handle_sigchld(int sig)
 {
-    char *token = strtok(input, " \n\t\r");
-    int counter = 0;
-    int flag = 0;
-    int ret_for_execvp = 100;
-    int last_but_one = 0;
-
-    struct timeval start_time, end_time;
-    gettimeofday(&start_time, NULL);
-
-    while (token != NULL)
+    pid_t pid;
+    int status;
+    while ((pid = waitpid(-1, &status, 0)) > 0)
     {
+        printf("pid %d exited succesfully\n", pid);
+    }
+}
 
-        int childID = fork();
+void syscommands(char *input, char *home, int *no_of_bg_processes, struct background_process bg_processes[], int bg_flag)
+{
 
-        if (childID == 0)
+    char *command = strtok(input, " \t\n");
+    char *args[100];
+    int i = 0;
+
+    while (command != NULL)
+    {
+        args[i] = command;
+        command = strtok(NULL, " \t\n");
+        i++;
+    }
+    args[i] = NULL;
+
+    if (bg_flag == 1) // BACKGROUND PROCESS
+    {
+        int pid = fork();
+
+        if (pid == 0)
         {
-            char *args[100];
-            int i = 0;
-            while (token != NULL)
+            printf("[%d]\n", getpid());
+            
+            if (execvp(args[0], args) < 0)
             {
-
-                args[i] = token;
-
-                i++;
-                token = strtok(NULL, " \n\t\r");
-
-                if (token != NULL)
-                {
-                    if (strcmp(token, "&") == 0)
-                    {
-                        // Background process
-                        // printf("Background process\n");
-
-                        args[i] = NULL;
-
-                        int childID2 = fork();
-                        
-                        if(childID2 == 0)
-                        {
-                            setpgid(0, 0);
-                            // how to print the status of the child process?
-                            return_for_execvp = execvp(args[0], args);
-                            perror("execvp");
-
-                        }
-                        else
-                        {
-                            // wait(NULL);
-                            printf("pid: %d\n", childID2);
-                            exit(0);
-                        }
-
-                        token = NULL;
-                    }
-                }
+                perror("Error");
+                exit(0);
             }
-
-            args[i] = NULL;
-
-            return_for_execvp = execvp(args[0], args);
-
-            flag = 1;
-            break;
         }
         else
         {
-            wait(NULL);
-
-            token = strtok(NULL, " \n\t\r");
+            int status;
+            bg_processes[counter_bg_processes].pid = pid;
+            strcpy(bg_processes[counter_bg_processes].name, args[0]);
+            // copy the arguments into args
+            for (int i = 0; i < 100; i++)
+            {
+                if (args[i] == NULL)
+                {
+                    break;
+                }
+                strcpy(bg_processes[counter_bg_processes].args[i], args[i]);
+            }
+            counter_bg_processes++;
+            signal(SIGCHLD, handle_sigchld);
         }
-        break;
     }
 
-    gettimeofday(&end_time, NULL);
-
-    execution_time_seconds = end_time.tv_sec - start_time.tv_sec;
-
-    // printf("Execution time: %d\n", execution_time_seconds);
-
-    if (return_for_execvp == -1)
+    else // FOREGROUND PROCESS
     {
-        printf("Command not found\n");
+        int pid = fork();
+        if (pid == 0)
+        {
+            if (execvp(args[0], args) < 0)
+            {
+                perror("Error");
+                exit(0);
+            }
+        }
+        else
+        {
+            int status;
+
+            struct timeval start_time, end_time;
+            gettimeofday(&start_time, NULL);
+
+            waitpid(pid, &status, WUNTRACED);
+
+            gettimeofday(&end_time, NULL);
+            execution_time_seconds = end_time.tv_sec - start_time.tv_sec;
+        }
     }
 }

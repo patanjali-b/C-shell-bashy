@@ -1,11 +1,49 @@
 #include "headers.h"
+#include "sys_commands.h"
+#include "command.h"
 
 char history[15][1000] = {};
 counter_pastevents = 0;
 int pastevents_flag = 0;
 
-void command(char *input, char *home)
+void command(char *input, char *home, int *no_of_bg_processes, struct background_process bg_processes[], int bg_flag)
 {
+
+    // intializing the background process array
+
+    int flag_pipe = 0;
+
+    for (int i = 0; i < strlen(input); i++)
+    {
+        if (input[i] == '|')
+        {
+            flag_pipe = 1;
+            break;
+        }
+    }
+
+    int flag_redirection = 0;
+
+    for (int i = 0; i < strlen(input); i++)
+    {
+        if (input[i] == '>' || input[i] == '<')
+        {
+            flag_redirection = 1;
+            break;
+        }
+    }
+
+    if (flag_pipe == 1)
+    {
+        pipe_func(input, home, no_of_bg_processes, bg_processes, bg_flag);
+        return;
+    }
+
+    if (flag_redirection == 1)
+    {
+        io_redirect(input, home, no_of_bg_processes, bg_processes, bg_flag);
+        return;
+    }
 
     char *input_copy = (char *)malloc(4096 * sizeof(char));
     strcpy(input_copy, input);
@@ -32,7 +70,7 @@ void command(char *input, char *home)
                 counter_pastevents = 0;
             }
         }
-        
+
         if (strcmp(command_ip, "warp") == 0)
         {
             warp_func(input_copy, home, prev_dir);
@@ -83,8 +121,7 @@ void command(char *input, char *home)
                 int index = atoi(token);
                 if (index >= 0 && index < 15)
                 {
-                    command(history[index - 1], home);
-
+                    command(history[index - 1], home, &no_of_bg_processes, bg_processes, 0);
                 }
                 else
                 {
@@ -92,13 +129,38 @@ void command(char *input, char *home)
                 }
             }
         }
-        else if(strcmp(command_ip ,"seek") == 0)
+        else if (strcmp(command_ip, "seek") == 0)
         {
-            seekPre(input_copy, home); 
+            seekPre(input_copy, home);
+        }
+        else if (strcmp(command_ip, "iMan") == 0)
+        {
+            iMan(input_copy, home);
+        }
+        else if (strcmp(command_ip, "activities") == 0)
+        {
+            activities(input_copy, home, bg_processes);
+        }
+        else if (strcmp(command_ip, "ping") == 0)
+        {
+            ping(input_copy, home, &no_of_bg_processes, bg_processes, bg_flag);
+        }
+        else if (strcmp(command_ip, "fg") == 0)
+        {
+            fg(input_copy, home, &no_of_bg_processes, bg_processes, bg_flag);
+        }
+        else if (strcmp(command_ip, "bg") == 0)
+        {
+            bg(input_copy, home);
+        }
+        else if (strcmp(command_ip, "neonate") == 0)
+        {
+            neonate(input_copy, home);
         }
         else
         {
-            syscommands(input_copy, home);
+
+            syscommands(input_copy, home, &no_of_bg_processes, bg_processes, bg_flag);
         }
 
         while (token != NULL)
@@ -107,4 +169,6 @@ void command(char *input, char *home)
             token = strtok(NULL, " ");
         }
     }
+
+    return;
 }

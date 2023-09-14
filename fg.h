@@ -8,6 +8,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 
-void bg(char* input, char *home_dir);
+void fg(char* input, char *home_dir, int* no_of_bg_processes, struct background_process *bg_processes, int bg_flag);
 
 #endif
+
